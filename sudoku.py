@@ -3,13 +3,13 @@ from Tkinter import *
 import argparse
 import time
 
-BOARDS = ['test', 'easy', 'hard']
-MARGIN = 20
+LEVELS = ['test', 'easy', 'medium', 'hard']
 SIDE = 60
+MARGIN = 20
 WIDTH = HEIGHT = MARGIN * 2 + SIDE * 9
 
 
-class SudokuError(Exception):
+class Error(Exception):
     pass
 
 
@@ -22,7 +22,7 @@ def parse_arguments():
     arg_parser.add_argument("--board",
                             help="Desired board name",
                             type=str,
-                            choices=BOARDS,
+                            choices=LEVELS,
                             required=True)
 
     args = vars(arg_parser.parse_args())
@@ -41,20 +41,20 @@ class SudokuBoard(object):
         for line in board_file:
             line = line.strip()
             if len(line) != 9:
-                raise SudokuError(
-                    "Each line in the sudoku puzzle must be 9 chars long."
+                raise Error(
+                    "each row = 9"
                 )
             board.append([])
 
             for c in line:
                 if not c.isdigit():
-                    raise SudokuError(
-                        "Valid characters for a sudoku puzzle must be in 0-9"
+                    raise Error(
+                        "allowed characters: 0-9"
                     )
                 board[-1].append(int(c))
 
         if len(board) != 9:
-            raise SudokuError("Each sudoku puzzle must be 9 lines long")
+            raise Error("# of rows = 9")
         return board
 
 
@@ -67,6 +67,7 @@ class SudokuGame(object):
         self.board_file = board_file
         self.x = root
 
+        # initialize timer
         self._start = 0.0        
         self._elapsedtime = 0.0
         self._running = 0
@@ -82,21 +83,34 @@ class SudokuGame(object):
             for j in xrange(9):
                 self.puzzle[i].append(self.start_puzzle[i][j])
 
+        # start timer
         if not self._running:            
             self._start = time.time() - self._elapsedtime
-            self._update()
+            self._updateTime()
             self._running = 1
 
-    def _update(self): 
+    def _updateTime(self):
         self._elapsedtime = time.time() - self._start
         self._setTime(self._elapsedtime)
-        self._timer = self.x.after(50, self._update)
+        self._timer = self.x.after(50, self._updateTime)
     
     def _setTime(self, elap):
         minutes = int(elap/60)
         seconds = int(elap - minutes*60.0)
         hseconds = int((elap - minutes*60.0 - seconds)*100)                
         self.timestr.set('%02d:%02d:%02d' % (minutes, seconds, hseconds))
+
+    def _stopTime(self):                                    
+        if self._running:
+            self.x.after_cancel(self._timer)            
+            self._elapsedtime = time.time() - self._start    
+            self._setTime(self._elapsedtime)
+            self._running = 0
+    
+    def _resetTime(self):                                  
+        self._start = time.time()         
+        self._elapsedtime = 0.0    
+        self._setTime(self._elapsedtime)
 
     def check_win(self):
         for row in xrange(9):
@@ -131,6 +145,55 @@ class SudokuGame(object):
                 for c in xrange(column * 3, (column + 1) * 3)
             ]
         )
+
+    def _valid(self, num, pos):
+        for i in xrange(9):
+            if self.puzzle[pos[0]][i] == num and pos[1] != i:
+                return False
+
+        for i in xrange(9):
+            if self.puzzle[i][pos[1]] == num and pos[0] != i:
+                return False
+
+        box_x = pos[1] // 3
+        box_y = pos[0] // 3
+
+        for i in xrange(box_y*3, box_y*3 + 3):
+            for j in xrange(box_x*3, box_x*3 + 3):
+                if self.puzzle[i][j] == num and (i,j) != pos:
+                    return False
+        return True
+
+    def _find_empty(self):
+        for i in xrange(9):
+            for j in xrange(9):
+                if self.puzzle[i][j] == 0:
+                    return (i, j)
+        return (-1, -1)
+
+    def _solve(self):
+        find = self._find_empty()
+        # for debugging purposes
+        print find
+        
+        if find == (-1, -1):
+            return True
+        else:
+            row, col = find
+
+        for i in xrange(1,10):
+            if self._valid(i, (row, col)):
+                self.puzzle[row][col] = i
+                # for debugging purposes
+                print i
+
+                if self._solve():
+                    return True
+                # for debugging purposes
+                print "retrace"
+
+                self.puzzle[row][col] = 0
+        return False
 
 
 class SudokuUI(Frame):
@@ -169,8 +232,8 @@ class SudokuUI(Frame):
         solve_button = Button(self,
                               text="SOLVE",
                               bg='blue',
-                              fg='white')
-                              #command=self.__clear_answers)
+                              fg='white',
+                              command=self._solve_it)
         solve_button.pack(side=LEFT, fill=BOTH, expand=TRUE)
 
         self.__draw_grid()
@@ -178,6 +241,12 @@ class SudokuUI(Frame):
 
         self.canvas.bind("<Button-1>", self.__cell_clicked)
         self.canvas.bind("<Key>", self.__key_pressed)
+
+    def _solve_it(self):
+        self.game._solve()
+        self.__draw_puzzle()
+
+        self.game._stopTime()
 
     def __draw_grid(self):
         """
@@ -280,35 +349,23 @@ class SudokuUI(Frame):
             self.__draw_cursor()
             if self.game.check_win():
                 self.__draw_result(1)
-
-                if self.game._running:
-                    self.after_cancel(self.game._timer)
-                    self.game._elapsedtime = time.time() - self.game._start
-                    self.game._setTime(self.game._elapsedtime)
-                    self.game._running = 0
+                self.game._stopTime()
             else:
                 flag = 1
-                for i in range(0, 9):
-                    for j in range(0, 9):
+                for i in xrange(0, 9):
+                    for j in xrange(0, 9):
                         if self.game.puzzle[i][j] == 0:
                             flag = 0
                 if flag:
                     self.__draw_result(0)
-
-                    if self.game._running:
-                        self.after_cancel(self.game._timer)
-                        self.game._elapsedtime = time.time() - self.game._start
-                        self.game._setTime(self.game._elapsedtime)
-                        self.game._running = 0
+                    self.game._stopTime()
 
     def __clear_answers(self):
         self.game.start()
         self.canvas.delete("victory")
         self.canvas.delete("defeat")
         
-        self.game._start = time.time()
-        self.game._elapsedtime = 0.0
-        self.game._setTime(self.game._elapsedtime)
+        self.game._resetTime()
         
         self.__draw_puzzle()
 
