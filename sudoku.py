@@ -1,7 +1,7 @@
+from Tkinter import *
+
 import argparse
 import time
-
-from Tkinter import Tk, Canvas, Frame, Button, BOTH, TOP, BOTTOM
 
 BOARDS = ['test', 'easy', 'hard']
 MARGIN = 20
@@ -29,6 +29,110 @@ def parse_arguments():
     return args['board']
 
 
+class SudokuBoard(object):
+    """
+    Sudoku Board
+    """
+    def __init__(self, board_file):
+        self.board = self.__create_board(board_file)
+
+    def __create_board(self, board_file):
+        board = []
+        for line in board_file:
+            line = line.strip()
+            if len(line) != 9:
+                raise SudokuError(
+                    "Each line in the sudoku puzzle must be 9 chars long."
+                )
+            board.append([])
+
+            for c in line:
+                if not c.isdigit():
+                    raise SudokuError(
+                        "Valid characters for a sudoku puzzle must be in 0-9"
+                    )
+                board[-1].append(int(c))
+
+        if len(board) != 9:
+            raise SudokuError("Each sudoku puzzle must be 9 lines long")
+        return board
+
+
+class SudokuGame(object):
+    """
+    Sudoku Game : store state of the board
+                : check whether puzzle is completed
+    """
+    def __init__(self, root, board_file):
+        self.board_file = board_file
+        self.x = root
+
+        self._start = 0.0        
+        self._elapsedtime = 0.0
+        self._running = 0
+        self.timestr = StringVar()
+
+        self.start_puzzle = SudokuBoard(board_file).board
+
+    def start(self):
+        self.game_over = False
+        self.puzzle = []
+        for i in xrange(9):
+            self.puzzle.append([])
+            for j in xrange(9):
+                self.puzzle[i].append(self.start_puzzle[i][j])
+
+        if not self._running:            
+            self._start = time.time() - self._elapsedtime
+            self._update()
+            self._running = 1
+
+    def _update(self): 
+        self._elapsedtime = time.time() - self._start
+        self._setTime(self._elapsedtime)
+        self._timer = self.x.after(50, self._update)
+    
+    def _setTime(self, elap):
+        minutes = int(elap/60)
+        seconds = int(elap - minutes*60.0)
+        hseconds = int((elap - minutes*60.0 - seconds)*100)                
+        self.timestr.set('%02d:%02d:%02d' % (minutes, seconds, hseconds))
+
+    def check_win(self):
+        for row in xrange(9):
+            if not self.__check_row(row):
+                return False
+        for column in xrange(9):
+            if not self.__check_column(column):
+                return False
+        for row in xrange(3):
+            for column in xrange(3):
+                if not self.__check_square(row, column):
+                    return False
+        self.game_over = True
+        return True
+
+    def __check_block(self, block):
+        return set(block) == set(range(1, 10))
+
+    def __check_row(self, row):
+        return self.__check_block(self.puzzle[row])
+
+    def __check_column(self, column):
+        return self.__check_block(
+            [self.puzzle[row][column] for row in xrange(9)]
+        )
+
+    def __check_square(self, row, column):
+        return self.__check_block(
+            [
+                self.puzzle[r][c]
+                for r in xrange(row * 3, (row + 1) * 3)
+                for c in xrange(column * 3, (column + 1) * 3)
+            ]
+        )
+
+
 class SudokuUI(Frame):
     """
     Tkinter GUI
@@ -39,7 +143,6 @@ class SudokuUI(Frame):
         self.parent = parent
 
         self.row, self.col = -1, -1
-
         self.__initUI()
 
     def __initUI(self):
@@ -57,7 +160,18 @@ class SudokuUI(Frame):
                               bg='blue',
                               fg='white',
                               command=self.__clear_answers)
-        clear_button.pack(fill=BOTH, side=BOTTOM)
+        clear_button.pack(side=LEFT, fill=BOTH, expand=TRUE)
+
+        timer_label = Label(self, textvariable=self.game.timestr, font="bold")
+        self.game._setTime(self.game._elapsedtime)
+        timer_label.pack(side=LEFT, fill=BOTH, expand=TRUE)
+
+        solve_button = Button(self,
+                              text="SOLVE",
+                              bg='blue',
+                              fg='white')
+                              #command=self.__clear_answers)
+        solve_button.pack(side=LEFT, fill=BOTH, expand=TRUE)
 
         self.__draw_grid()
         self.__draw_puzzle()
@@ -166,6 +280,12 @@ class SudokuUI(Frame):
             self.__draw_cursor()
             if self.game.check_win():
                 self.__draw_result(1)
+
+                if self.game._running:
+                    self.after_cancel(self.game._timer)
+                    self.game._elapsedtime = time.time() - self.game._start
+                    self.game._setTime(self.game._elapsedtime)
+                    self.game._running = 0
             else:
                 flag = 1
                 for i in range(0, 9):
@@ -175,102 +295,33 @@ class SudokuUI(Frame):
                 if flag:
                     self.__draw_result(0)
 
+                    if self.game._running:
+                        self.after_cancel(self.game._timer)
+                        self.game._elapsedtime = time.time() - self.game._start
+                        self.game._setTime(self.game._elapsedtime)
+                        self.game._running = 0
+
     def __clear_answers(self):
         self.game.start()
         self.canvas.delete("victory")
         self.canvas.delete("defeat")
+        
+        self.game._start = time.time()
+        self.game._elapsedtime = 0.0
+        self.game._setTime(self.game._elapsedtime)
+        
         self.__draw_puzzle()
-
-
-class SudokuBoard(object):
-    """
-    Sudoku Board
-    """
-    def __init__(self, board_file):
-        self.board = self.__create_board(board_file)
-
-    def __create_board(self, board_file):
-        board = []
-        for line in board_file:
-            line = line.strip()
-            if len(line) != 9:
-                raise SudokuError(
-                    "Each line in the sudoku puzzle must be 9 chars long."
-                )
-            board.append([])
-
-            for c in line:
-                if not c.isdigit():
-                    raise SudokuError(
-                        "Valid characters for a sudoku puzzle must be in 0-9"
-                    )
-                board[-1].append(int(c))
-
-        if len(board) != 9:
-            raise SudokuError("Each sudoku puzzle must be 9 lines long")
-        return board
-
-
-class SudokuGame(object):
-    """
-    Sudoku Game : store state of the board
-                : check whether puzzle is completed
-    """
-    def __init__(self, board_file):
-        self.board_file = board_file
-        self.start_puzzle = SudokuBoard(board_file).board
-
-    def start(self):
-        self.game_over = False
-        self.puzzle = []
-        for i in xrange(9):
-            self.puzzle.append([])
-            for j in xrange(9):
-                self.puzzle[i].append(self.start_puzzle[i][j])
-
-    def check_win(self):
-        for row in xrange(9):
-            if not self.__check_row(row):
-                return False
-        for column in xrange(9):
-            if not self.__check_column(column):
-                return False
-        for row in xrange(3):
-            for column in xrange(3):
-                if not self.__check_square(row, column):
-                    return False
-        self.game_over = True
-        return True
-
-    def __check_block(self, block):
-        return set(block) == set(range(1, 10))
-
-    def __check_row(self, row):
-        return self.__check_block(self.puzzle[row])
-
-    def __check_column(self, column):
-        return self.__check_block(
-            [self.puzzle[row][column] for row in xrange(9)]
-        )
-
-    def __check_square(self, row, column):
-        return self.__check_block(
-            [
-                self.puzzle[r][c]
-                for r in xrange(row * 3, (row + 1) * 3)
-                for c in xrange(column * 3, (column + 1) * 3)
-            ]
-        )
 
 
 if __name__ == '__main__':
     board_name = parse_arguments()
 
     with open('%s.sudoku' % board_name, 'r') as boards_file:
-        game = SudokuGame(boards_file)
+        root = Tk()
+
+        game = SudokuGame(root, boards_file)
         game.start()
 
-        root = Tk()
         SudokuUI(root, game)
         root.geometry("%dx%d" % (WIDTH, HEIGHT + 40))
         root.mainloop()
