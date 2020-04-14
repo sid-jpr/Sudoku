@@ -69,9 +69,9 @@ class SudokuGame(object):
     def start(self):
         self.game_over = False
         self.puzzle = []
-        for i in xrange(9):
+        for i in range(9):
             self.puzzle.append([])
-            for j in xrange(9):
+            for j in range(9):
                 self.puzzle[i].append(self.start_puzzle[i][j])
 
         # start timer
@@ -104,14 +104,14 @@ class SudokuGame(object):
         self._setTime(self._elapsedtime)
 
     def check_win(self):
-        for row in xrange(9):
+        for row in range(9):
             if not self.__check_row(row):
                 return False
-        for column in xrange(9):
+        for column in range(9):
             if not self.__check_column(column):
                 return False
-        for row in xrange(3):
-            for column in xrange(3):
+        for row in range(3):
+            for column in range(3):
                 if not self.__check_square(row, column):
                     return False
         self.game_over = True
@@ -125,39 +125,39 @@ class SudokuGame(object):
 
     def __check_column(self, column):
         return self.__check_block(
-            [self.puzzle[row][column] for row in xrange(9)]
+            [self.puzzle[row][column] for row in range(9)]
         )
 
     def __check_square(self, row, column):
         return self.__check_block(
             [
                 self.puzzle[r][c]
-                for r in xrange(row * 3, (row + 1) * 3)
-                for c in xrange(column * 3, (column + 1) * 3)
+                for r in range(row * 3, (row + 1) * 3)
+                for c in range(column * 3, (column + 1) * 3)
             ]
         )
 
     def _valid(self, num, pos):
-        for i in xrange(9):
+        for i in range(9):
             if self.puzzle[pos[0]][i] == num and pos[1] != i:
                 return False
 
-        for i in xrange(9):
+        for i in range(9):
             if self.puzzle[i][pos[1]] == num and pos[0] != i:
                 return False
 
         box_x = pos[1] // 3
         box_y = pos[0] // 3
 
-        for i in xrange(box_y*3, box_y*3 + 3):
-            for j in xrange(box_x*3, box_x*3 + 3):
+        for i in range(box_y*3, box_y*3 + 3):
+            for j in range(box_x*3, box_x*3 + 3):
                 if self.puzzle[i][j] == num and (i,j) != pos:
                     return False
         return True
 
     def _find_empty(self):
-        for i in xrange(9):
-            for j in xrange(9):
+        for i in range(9):
+            for j in range(9):
                 if self.puzzle[i][j] == 0:
                     return (i, j)
         return (-1, -1)
@@ -165,23 +165,23 @@ class SudokuGame(object):
     def _solve(self):
         find = self._find_empty()
         # for debugging purposes
-        print find
+        print(find)
         
         if find == (-1, -1):
             return True
         else:
             row, col = find
 
-        for i in xrange(1,10):
+        for i in range(1,10):
             if self._valid(i, (row, col)):
                 self.puzzle[row][col] = i
                 # for debugging purposes
-                print i
+                print(i)
 
                 if self._solve():
                     return True
                 # for debugging purposes
-                print "retrace"
+                print("retrace")
 
                 self.puzzle[row][col] = 0
         return False

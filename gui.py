@@ -1,4 +1,4 @@
-from Tkinter import *
+from tkinter import *
 
 LEVELS = ['test', 'easy', 'medium', 'hard']
 SIDE = 60
@@ -61,7 +61,7 @@ class SudokuUI(Frame):
         """
         Draws grid divided with blue lines into 3x3 squares
         """
-        for i in xrange(10):
+        for i in range(10):
             color = "blue" if i % 3 == 0 else "grey"
             wd = 4 if i % 3 == 0 else 2
 
@@ -79,8 +79,8 @@ class SudokuUI(Frame):
 
     def __draw_puzzle(self):
         self.canvas.delete("numbers")
-        for i in xrange(9):
-            for j in xrange(9):
+        for i in range(9):
+            for j in range(9):
                 answer = self.game.puzzle[i][j]
                 if answer != 0:
                     x = MARGIN + j * SIDE + SIDE / 2
@@ -137,7 +137,7 @@ class SudokuUI(Frame):
         if (MARGIN < x < WIDTH - MARGIN and MARGIN < y < HEIGHT - MARGIN):
             self.canvas.focus_set()
 
-            row, col = (y - MARGIN) / SIDE, (x - MARGIN) / SIDE
+            row, col = (y - MARGIN) // SIDE, (x - MARGIN) // SIDE
 
             if (row, col) == (self.row, self.col):
                 self.row, self.col = -1, -1
@@ -161,8 +161,8 @@ class SudokuUI(Frame):
                 self.game._stopTime()
             else:
                 flag = 1
-                for i in xrange(0, 9):
-                    for j in xrange(0, 9):
+                for i in range(0, 9):
+                    for j in range(0, 9):
                         if self.game.puzzle[i][j] == 0:
                             flag = 0
                 if flag:
