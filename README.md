@@ -12,7 +12,7 @@ It includes the following functionalities:
 ### Instructions
 Install TkInter:
 ```
-$ sudo apt-get install python-tk
+$ sudo apt-get install python3-tk
 ```
 Clone the repository:
 ```
@@ -20,7 +20,7 @@ $ git clone https://github.com/sid-jpr/Sudoku-GUI
 ```
 Run the file:
 ```
-$ python sudoku.py --board [level]
+$ python3 sudoku.py --board [level]
 ```
 
 ### References
