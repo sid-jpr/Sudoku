@@ -11,15 +11,15 @@ It includes the following functionalities:
 
 ### Instructions
 Install TkInter:
-```
+```php
 $ sudo apt-get install python3-tk
 ```
 Clone the repository:
-```
+```php
 $ git clone https://github.com/sid-jpr/Sudoku-GUI
 ```
 Run the file:
-```
+```php
 $ python3 sudoku.py --board [level]
 ```
 
